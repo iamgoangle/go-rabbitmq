@@ -17,6 +17,12 @@ type Connection interface {
 
 	// Do handles channel amqp event
 	Do() *amqp.Channel
+
+	// ExchangeDeclare creates an exchange
+	ExchangeDeclare(name, kind string, args amqp.Table) error
+
+	// QueueDeclare creates a queue
+	QueueDeclare(name string, args amqp.Table) error
 }
 
 type connection struct {
@@ -64,7 +70,7 @@ func (c *connection) ExchangeDeclare(name, kind string, args amqp.Table) error {
 
 	err := c.Channel.ExchangeDeclare(name, kind, durable, autoDelete, internal, noWait, args)
 	if err != nil {
-		return errors.Wrap(err, "unable to declare exchange")
+		return err
 	}
 
 	return nil
@@ -72,4 +78,18 @@ func (c *connection) ExchangeDeclare(name, kind string, args amqp.Table) error {
 
 func (c *connection) Do() *amqp.Channel {
 	return c.Channel
+}
+
+func (c *connection) QueueDeclare(name string, args amqp.Table) error {
+	durable := false
+	autoDelete := false
+	exclusive := false
+	noWait := false
+
+	_, err := c.Channel.QueueDeclare(name, durable, autoDelete, exclusive, noWait, args)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
