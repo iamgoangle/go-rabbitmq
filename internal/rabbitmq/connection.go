@@ -14,17 +14,14 @@ type Connection interface {
 
 	// CloseChannel closes the amqp channel
 	CloseChannel()
+
+	// Do handles channel amqp event
+	Do() *amqp.Channel
 }
 
 type connection struct {
 	*amqp.Connection
 	*amqp.Channel
-}
-
-type Exchange struct {
-	name, kind                            string
-	durable, autoDelete, internal, noWait bool
-	args                                  *amqp.Table
 }
 
 // NewAMQPConnection creates amqp connection and channel
@@ -59,11 +56,20 @@ func (c *connection) CloseChannel() {
 	c.CloseChannel()
 }
 
-func (c *connection) ExchangeDeclare(name, kind string, configs ...Exchange) error {
-	err := c.Channel.ExchangeDeclare(name, kind)
+func (c *connection) ExchangeDeclare(name, kind string, args amqp.Table) error {
+	durable := false
+	autoDelete := false
+	internal := false
+	noWait := false
+
+	err := c.Channel.ExchangeDeclare(name, kind, durable, autoDelete, internal, noWait, args)
 	if err != nil {
 		return errors.Wrap(err, "unable to declare exchange")
 	}
 
 	return nil
+}
+
+func (c *connection) Do() *amqp.Channel {
+	return c.Channel
 }

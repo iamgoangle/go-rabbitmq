@@ -2,42 +2,50 @@ package rabbitmq
 
 import (
 	"github.com/pkg/errors"
+
 	"github.com/streadway/amqp"
 )
 
 type Producer interface {
-	UseExchangeWithConfig(...ExchangeConfigHandler) error
+	UseWithConfig(config ...ProducerConfigHandler) error
+	Publish(body []byte, config ...PublishConfigHandler) error
 }
 
-type producer struct {
-	*Exchange
+type Produce struct {
+	exchange, key, kind  string
+	mandatory, immediate bool
+	con                  Connection
 }
 
-type Exchange struct {
-	name, kind                            string
-	durable, autoDelete, internal, noWait bool
-	args                                  *amqp.Table
-}
+type ProducerConfigHandler func(*Produce) error
 
-type ExchangeConfigHandler func(*Exchange) error
+type PublishConfigHandler func(*amqp.Publishing) error
 
 // NewProducer instance the new producer
-func NewProducer(exName, exKind string, conn Connection) Producer {
-	return &producer{
-		Exchange: &Exchange{
-			name: exName,
-			kind: exKind,
-		},
+func NewProducer(exName, routingKey, kind string, con Connection) Producer {
+	return &Produce{
+		exchange: exName,
+		key:      routingKey,
+		kind:     kind,
+		con:      con,
 	}
 }
 
-func (p *producer) UseExchangeWithConfig(configs ...ExchangeConfigHandler) error {
+func (p *Produce) UseWithConfig(configs ...ProducerConfigHandler) error {
 	for _, config := range configs {
-		err := config(p.Exchange)
+		err := config(p)
 		if err != nil {
-			return errors.Wrap(err, "unable to apply exchange with config")
+			return errors.Wrap(err, "unable to apply config")
 		}
 	}
 
 	return nil
+}
+
+func (p *Produce) Publish(body []byte, config ...PublishConfigHandler) error {
+	msg := amqp.Publishing{
+		Body: body,
+	}
+
+	return p.con.Do().Publish(p.exchange, p.key, p.mandatory, p.immediate, msg)
 }
