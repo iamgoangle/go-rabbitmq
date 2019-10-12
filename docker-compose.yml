@@ -1,17 +1,17 @@
 version: "3"
 
 services:
-  # rabbitmq:
-  #   image: "rabbitmq:3-management"
-  #   container_name: "rabbitmq"
-  #   hostname: "rabbit"
-  #   ports:
-  #     - "15672:15672"
-  #     - "5672:5672"
-  #   labels:
-  #     NAME: "rabbitmq"
-  #   volumes:
-  #     - ./rabbitmq-isolated.conf:/etc/rabbitmq/rabbitmq.config
+  rabbitmq:
+    image: "rabbitmq:3-management"
+    container_name: "rabbitmq"
+    hostname: "rabbit"
+    ports:
+      - "15672:15672"
+      - "5672:5672"
+    labels:
+      NAME: "rabbitmq"
+    volumes:
+      - ./rabbitmq-isolated.conf:/etc/rabbitmq/rabbitmq.config
 
   app:
     container_name: "app"
