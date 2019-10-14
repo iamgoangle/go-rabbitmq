@@ -1,3 +1,6 @@
 package rabbitmq
 
-// TODO: please wait
+type Consumer interface {
+	Use()
+	UseWithDLQ()
+}
