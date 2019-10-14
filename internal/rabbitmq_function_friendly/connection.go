@@ -23,12 +23,18 @@ type Connection interface {
 	// Declare applys declare handler
 	// exchange to define amqp routing
 	// queue to define queue
-	Declare(handlers ...DeclareHandler) error
+	// Declare(handlers ...DeclareHandler) error
+	Declare(handler DeclareHandler) error
+
+	// ApplyDeclare applies declare as soon as possible
+	ApplyDeclare(handler ...DeclareHandler) error
 }
 
 type connection struct {
 	*amqp.Connection
 	*amqp.Channel
+
+	declares []DeclareHandler
 }
 
 // NewAMQPConnection creates amqp connection and channel
@@ -55,7 +61,17 @@ func NewAMQPConnection(host string) (Connection, error) {
 	}, nil
 }
 
-func (c *connection) Declare(handlers ...DeclareHandler) error {
+func (c *connection) Declare(handler DeclareHandler) error {
+	if handler == nil {
+		log.Panic("unable to apply declares")
+	}
+
+	c.declares = append(c.declares, handler)
+
+	return nil
+}
+
+func (c *connection) ApplyDeclare(handlers ...DeclareHandler) error {
 	if handlers == nil {
 		log.Panic("unable to apply declares")
 	}
@@ -79,5 +95,12 @@ func (c *connection) CloseChannel() {
 }
 
 func (c *connection) Do() *amqp.Channel {
+	for _, h := range c.declares {
+		err := h(c.Channel)
+		if err != nil {
+			log.Panic("unable applies declare handler", err.Error())
+		}
+	}
+
 	return c.Channel
 }

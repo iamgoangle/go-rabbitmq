@@ -14,4 +14,6 @@ func main() {
 
 	connection.Declare(rabbitmq.Exchange("exchange_test", "direct", nil))
 	connection.Declare(rabbitmq.Queue("test", nil))
+
+	connection.
 }
