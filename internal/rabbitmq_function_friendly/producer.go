@@ -11,7 +11,7 @@ type Producer interface {
 	// UseWithConfig configs producer
 	UseWithConfig(config ...ProducerConfigHandler) error
 
-	// Publish send the message to AMQP broker
+	// Publish send the message to amqp broker
 	Publish(body []byte, config ...PublishConfigHandler) error
 }
 
@@ -51,12 +51,72 @@ func (p *Produce) UseWithConfig(configs ...ProducerConfigHandler) error {
 	return nil
 }
 
-func (p *Produce) Publish(body []byte, config ...PublishConfigHandler) error {
+func (p *Produce) Publish(body []byte, configs ...PublishConfigHandler) error {
 	msg := amqp.Publishing{
-		ContentType:  "text/json",
-		DeliveryMode: amqp.Persistent,
-		Body:         body,
+		ContentType: "text/json",
+		Body:        body,
+	}
+
+	for _, config := range configs {
+		err := config(&msg)
+		if err != nil {
+			return errors.Wrap(err, "unable to apply publish config handler")
+		}
 	}
 
 	return p.ch.Publish(p.exchange, p.key, p.mandatory, p.immediate, msg)
+}
+
+// PublisherTTLConfig defines closure function to handler publish ttl
+func PublisherTTLConfig(ttl string) PublishConfigHandler {
+	return func(msg *amqp.Publishing) error {
+		if len(ttl) == 0 {
+			return errors.New("missing argument `ttl`")
+		}
+
+		msg.Expiration = ttl
+
+		return nil
+	}
+}
+
+// PublisherDeliveryModeConfig defines closure function to handler delivery mode
+// Transient (0 or 1) or Persistent (2)
+func PublisherDeliveryModeConfig(persist uint8) PublishConfigHandler {
+	return func(msg *amqp.Publishing) error {
+		if persist > 2 {
+			return errors.New("failed to set config `persist`")
+		}
+
+		msg.DeliveryMode = persist
+
+		return nil
+	}
+}
+
+// PublisherContentTypeConfig set MIME content type
+func PublisherContentTypeConfig(cType string) PublishConfigHandler {
+	return func(msg *amqp.Publishing) error {
+		if len(cType) == 0 {
+			return errors.New("missing argument `cType`")
+		}
+
+		msg.ContentType = cType
+
+		return nil
+	}
+}
+
+// PublisherPriorityConfig set priority queue
+// level 0-9
+func PublisherPriorityConfig(level uint8) PublishConfigHandler {
+	return func(msg *amqp.Publishing) error {
+		if level > 9 {
+			return errors.New("fail to set config `level`")
+		}
+
+		msg.Priority = level
+
+		return nil
+	}
 }
