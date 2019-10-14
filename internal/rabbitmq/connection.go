@@ -19,10 +19,10 @@ type Connection interface {
 	Do() *amqp.Channel
 
 	// ExchangeDeclare creates an exchange
-	ExchangeDeclare(name, kind string, args amqp.Table) error
+	ExchangeDeclare(name, kind string, args amqp.Table) Connection
 
 	// QueueDeclare creates a queue
-	QueueDeclare(name string, args amqp.Table) error
+	QueueDeclare(name string, args amqp.Table) Connection
 }
 
 type connection struct {
@@ -31,19 +31,19 @@ type connection struct {
 }
 
 // NewAMQPConnection creates amqp connection and channel
-func NewAMQPConnection(host string) (Connection, error) {
+func NewAMQPConnection(host string) Connection {
 	if len(host) == 0 {
-		return nil, errors.New("fail to create channel due to missing host specified")
+		log.Panic(errors.New("fail to create channel due to missing host specified"))
 	}
 
 	conn, err := amqp.Dial(host)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to create new connection")
+		log.Panic(err)
 	}
 
 	ch, err := conn.Channel()
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to create channel")
+		log.Panic(err)
 	}
 
 	log.Println("created new amqp connection and channel")
@@ -51,7 +51,7 @@ func NewAMQPConnection(host string) (Connection, error) {
 	return &connection{
 		Connection: conn,
 		Channel:    ch,
-	}, nil
+	}
 }
 
 func (c *connection) Close() {
@@ -62,7 +62,7 @@ func (c *connection) CloseChannel() {
 	c.CloseChannel()
 }
 
-func (c *connection) ExchangeDeclare(name, kind string, args amqp.Table) error {
+func (c *connection) ExchangeDeclare(name, kind string, args amqp.Table) Connection {
 	durable := false
 	autoDelete := false
 	internal := false
@@ -70,17 +70,17 @@ func (c *connection) ExchangeDeclare(name, kind string, args amqp.Table) error {
 
 	err := c.Channel.ExchangeDeclare(name, kind, durable, autoDelete, internal, noWait, args)
 	if err != nil {
-		return err
+		log.Panic("unable to create exchange", err.Error())
 	}
 
-	return nil
+	return c
 }
 
 func (c *connection) Do() *amqp.Channel {
 	return c.Channel
 }
 
-func (c *connection) QueueDeclare(name string, args amqp.Table) error {
+func (c *connection) QueueDeclare(name string, args amqp.Table) Connection {
 	durable := false
 	autoDelete := false
 	exclusive := false
@@ -88,8 +88,8 @@ func (c *connection) QueueDeclare(name string, args amqp.Table) error {
 
 	_, err := c.Channel.QueueDeclare(name, durable, autoDelete, exclusive, noWait, args)
 	if err != nil {
-		return err
+		log.Panic("unable to create queue", err.Error())
 	}
 
-	return nil
+	return c
 }
