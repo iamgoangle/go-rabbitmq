@@ -14,6 +14,7 @@ func main() {
 
 	connection.Use(rabbitmq.ExchangeDeclare("exchange_test", rabbitmq.ExchangeDirect, nil))
 	connection.Use(rabbitmq.QueueDeclare("test", nil))
+	connection.Use(rabbitmq.QueueBind("test", "", "exchange_test", false, nil))
 
 	producer := rabbitmq.NewProducer("exchange_test", "", "", connection.Do())
 	err = producer.Publish([]byte(`{"Name":"Alice","Body":"Hello","Time":1294706395881547000}`), nil)

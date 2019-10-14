@@ -66,14 +66,14 @@ func (c *connection) Use(handler HandlerFunc) error {
 		log.Panic("unable to apply Uses")
 	}
 
-	c.Uses = append(c.Uses, handler)
+	c.middlewares = append(c.middlewares, handler)
 
 	return nil
 }
 
 func (c *connection) ApplyUse(handlers ...HandlerFunc) error {
 	if handlers == nil {
-		log.Panic("unable to apply Uses")
+		log.Panic("unable to apply use")
 	}
 
 	for _, h := range handlers {
