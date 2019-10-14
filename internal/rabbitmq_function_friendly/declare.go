@@ -5,8 +5,15 @@ import (
 	"github.com/streadway/amqp"
 )
 
-// Exchange return exchange declare handler function option
-func Exchange(name, kind string, args amqp.Table) DeclareHandler {
+const (
+	ExchangeDirect  = "direct"
+	ExchangeFanout  = "fanout"
+	ExchangeTopic   = "topic"
+	ExchangeHeaders = "headers"
+)
+
+// ExchangeDeclare return exchange declare handler function option
+func ExchangeDeclare(name, kind string, args amqp.Table) HandlerFunc {
 	durable := false
 	autoDelete := false
 	internal := false
@@ -22,8 +29,8 @@ func Exchange(name, kind string, args amqp.Table) DeclareHandler {
 	}
 }
 
-// Queue return queue declare handler function option
-func Queue(name string, args amqp.Table) DeclareHandler {
+// QueueDeclare return queue declare handler function option
+func QueueDeclare(name string, args amqp.Table) HandlerFunc {
 	durable := false
 	autoDelete := false
 	exclusive := false

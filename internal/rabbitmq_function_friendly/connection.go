@@ -7,7 +7,7 @@ import (
 	"github.com/streadway/amqp"
 )
 
-type DeclareHandler func(ch *amqp.Channel) error
+type HandlerFunc func(ch *amqp.Channel) error
 
 // Connection represent interface amqp connection
 type Connection interface {
@@ -20,21 +20,21 @@ type Connection interface {
 	// Do handles channel amqp event
 	Do() *amqp.Channel
 
-	// Declare applys declare handler
+	// Use applys use handler
 	// exchange to define amqp routing
 	// queue to define queue
-	// Declare(handlers ...DeclareHandler) error
-	Declare(handler DeclareHandler) error
+	// Use(handlers ...HandlerFunc) error
+	Use(handler HandlerFunc) error
 
-	// ApplyDeclare applies declare as soon as possible
-	ApplyDeclare(handler ...DeclareHandler) error
+	// ApplyUse applies use as soon as possible
+	ApplyUse(handler ...HandlerFunc) error
 }
 
 type connection struct {
 	*amqp.Connection
 	*amqp.Channel
 
-	declares []DeclareHandler
+	middlewares []HandlerFunc
 }
 
 // NewAMQPConnection creates amqp connection and channel
@@ -61,25 +61,25 @@ func NewAMQPConnection(host string) (Connection, error) {
 	}, nil
 }
 
-func (c *connection) Declare(handler DeclareHandler) error {
+func (c *connection) Use(handler HandlerFunc) error {
 	if handler == nil {
-		log.Panic("unable to apply declares")
+		log.Panic("unable to apply Uses")
 	}
 
-	c.declares = append(c.declares, handler)
+	c.Uses = append(c.Uses, handler)
 
 	return nil
 }
 
-func (c *connection) ApplyDeclare(handlers ...DeclareHandler) error {
+func (c *connection) ApplyUse(handlers ...HandlerFunc) error {
 	if handlers == nil {
-		log.Panic("unable to apply declares")
+		log.Panic("unable to apply Uses")
 	}
 
 	for _, h := range handlers {
 		err := h(c.Channel)
 		if err != nil {
-			return errors.Wrap(err, "unable appled declare handler")
+			return errors.Wrap(err, "unable appled Use handler")
 		}
 	}
 
@@ -95,10 +95,10 @@ func (c *connection) CloseChannel() {
 }
 
 func (c *connection) Do() *amqp.Channel {
-	for _, h := range c.declares {
-		err := h(c.Channel)
+	for _, handler := range c.middlewares {
+		err := handler(c.Channel)
 		if err != nil {
-			log.Panic("unable applies declare handler", err.Error())
+			log.Panic("unable applies handler", err.Error())
 		}
 	}
 

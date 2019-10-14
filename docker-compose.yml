@@ -12,17 +12,16 @@ services:
       NAME: "rabbitmq"
     volumes:
       - ./rabbitmq-isolated.conf:/etc/rabbitmq/rabbitmq.config
-
-  app:
-    container_name: "app"
-    build:
-      context: ./
-      dockerfile: ./Dockerfile
-    volumes:
-      # - ~/.air:/src/go
-      - ./:/src/go
-      - $GOPATH/pkg/mod:/go/pkg/mod
-    ports:
-      - 8080:8080
-    working_dir: /src/go
-    command: ./air -c air.conf
+  # app:
+  #   container_name: "app"
+  #   build:
+  #     context: ./
+  #     dockerfile: ./Dockerfile
+  #   volumes:
+  #     # - ~/.air:/src/go
+  #     - ./:/src/go
+  #     - $GOPATH/pkg/mod:/go/pkg/mod
+  #   ports:
+  #     - 8080:8080
+  #   working_dir: /src/go
+  #   command: ./air -c air.conf

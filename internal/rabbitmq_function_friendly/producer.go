@@ -19,7 +19,7 @@ type Producer interface {
 type Produce struct {
 	exchange, key, kind  string
 	mandatory, immediate bool
-	con                  Connection
+	ch                   *amqp.Channel
 }
 
 // ProducerConfigHandler handles optinal parameter as a function
@@ -31,12 +31,12 @@ type ProducerConfigHandler func(*Produce) error
 type PublishConfigHandler func(*amqp.Publishing) error
 
 // NewProducer instance the new producer
-func NewProducer(exName, routingKey, kind string, con Connection) Producer {
+func NewProducer(exName, routingKey, kind string, ch *amqp.Channel) Producer {
 	return &Produce{
 		exchange: exName,
 		key:      routingKey,
 		kind:     kind,
-		con:      con,
+		ch:       ch,
 	}
 }
 
@@ -53,8 +53,10 @@ func (p *Produce) UseWithConfig(configs ...ProducerConfigHandler) error {
 
 func (p *Produce) Publish(body []byte, config ...PublishConfigHandler) error {
 	msg := amqp.Publishing{
-		Body: body,
+		ContentType:  "text/json",
+		DeliveryMode: amqp.Persistent,
+		Body:         body,
 	}
 
-	return p.con.Do().Publish(p.exchange, p.key, p.mandatory, p.immediate, msg)
+	return p.ch.Publish(p.exchange, p.key, p.mandatory, p.immediate, msg)
 }
