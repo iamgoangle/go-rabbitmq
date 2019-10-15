@@ -44,7 +44,7 @@ func (p *Produce) UseWithConfig(configs ...ProducerConfigHandler) error {
 	for _, config := range configs {
 		err := config(p)
 		if err != nil {
-			return errors.Wrap(err, "unable to apply config")
+			return errors.Wrap(err, FailedToApplyProducerConfigFunc)
 		}
 	}
 
@@ -60,7 +60,7 @@ func (p *Produce) Publish(body []byte, configs ...PublishConfigHandler) error {
 	for _, config := range configs {
 		err := config(&msg)
 		if err != nil {
-			return errors.Wrap(err, "unable to apply publish config handler")
+			return errors.Wrap(err, FailedToApplyPublishPropertyConfigFunc)
 		}
 	}
 
@@ -71,7 +71,7 @@ func (p *Produce) Publish(body []byte, configs ...PublishConfigHandler) error {
 func PublisherTTLConfig(ttl string) PublishConfigHandler {
 	return func(msg *amqp.Publishing) error {
 		if len(ttl) == 0 {
-			return errors.New("missing argument `ttl`")
+			return errors.New(MissingArgumentTTL)
 		}
 
 		msg.Expiration = ttl
@@ -85,7 +85,7 @@ func PublisherTTLConfig(ttl string) PublishConfigHandler {
 func PublisherDeliveryModeConfig(persist uint8) PublishConfigHandler {
 	return func(msg *amqp.Publishing) error {
 		if persist > 2 {
-			return errors.New("failed to set config `persist`")
+			return errors.New(FailedToSetConfigPersist)
 		}
 
 		msg.DeliveryMode = persist
@@ -98,7 +98,7 @@ func PublisherDeliveryModeConfig(persist uint8) PublishConfigHandler {
 func PublisherContentTypeConfig(cType string) PublishConfigHandler {
 	return func(msg *amqp.Publishing) error {
 		if len(cType) == 0 {
-			return errors.New("missing argument `cType`")
+			return errors.New(MissingArgumentContentType)
 		}
 
 		msg.ContentType = cType
@@ -112,7 +112,7 @@ func PublisherContentTypeConfig(cType string) PublishConfigHandler {
 func PublisherPriorityConfig(level uint8) PublishConfigHandler {
 	return func(msg *amqp.Publishing) error {
 		if level > 9 {
-			return errors.New("fail to set config `level`")
+			return errors.New(FailedToSetConfigPriority)
 		}
 
 		msg.Priority = level

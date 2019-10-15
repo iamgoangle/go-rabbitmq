@@ -45,12 +45,12 @@ func NewAMQPConnection(host string) (Connection, error) {
 
 	conn, err := amqp.Dial(host)
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to create new connection")
+		return nil, errors.Wrap(err, FailedToCreateNewConnection)
 	}
 
 	ch, err := conn.Channel()
 	if err != nil {
-		return nil, errors.Wrap(err, "unable to create channel")
+		return nil, errors.Wrap(err, FailedToCreateNewChannel)
 	}
 
 	log.Println("created new amqp connection and channel")
@@ -63,7 +63,7 @@ func NewAMQPConnection(host string) (Connection, error) {
 
 func (c *connection) Use(handler HandlerFunc) error {
 	if handler == nil {
-		log.Panic("unable to apply Uses")
+		log.Panic(FailedToAppledHandlerFunc)
 	}
 
 	c.middlewares = append(c.middlewares, handler)
@@ -73,13 +73,13 @@ func (c *connection) Use(handler HandlerFunc) error {
 
 func (c *connection) ApplyUse(handlers ...HandlerFunc) error {
 	if handlers == nil {
-		log.Panic("unable to apply use")
+		log.Panic(FailedToAppledHandlerFunc)
 	}
 
 	for _, h := range handlers {
 		err := h(c.Channel)
 		if err != nil {
-			return errors.Wrap(err, "unable appled Use handler")
+			return errors.Wrap(err, FailedToAppledHandlerFunc)
 		}
 	}
 
@@ -98,7 +98,7 @@ func (c *connection) Do() *amqp.Channel {
 	for _, handler := range c.middlewares {
 		err := handler(c.Channel)
 		if err != nil {
-			log.Panic("unable applies handler", err.Error())
+			log.Panic(FailedToAppledHandlerFunc, err.Error())
 		}
 	}
 
