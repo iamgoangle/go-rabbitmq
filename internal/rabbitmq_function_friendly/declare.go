@@ -6,10 +6,10 @@ import (
 )
 
 const (
-	ExchangeDirect  = "direct"
-	ExchangeFanout  = "fanout"
-	ExchangeTopic   = "topic"
-	ExchangeHeaders = "headers"
+	ExchangeDirect  = amqp.ExchangeDirect
+	ExchangeFanout  = amqp.ExchangeFanout
+	ExchangeTopic   = amqp.ExchangeTopic
+	ExchangeHeaders = amqp.ExchangeHeaders
 )
 
 // ExchangeDeclare return exchange declare handler function option

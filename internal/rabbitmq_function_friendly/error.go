@@ -5,11 +5,13 @@ const (
 	FailedToCreateNewChannel    = "unable to create channel"
 	FailedToAppledHandlerFunc   = "unable to apply handler func, please check your function"
 
-	FailedToApplyProducerConfigFunc        = "unable to apply config"
+	FailedToApplyProducerConfigFunc        = "unable to apply producer config"
 	FailedToApplyPublishPropertyConfigFunc = "unable to apply publish property config func"
 
 	MissingArgumentTTL         = "missing argument `ttl`"
 	MissingArgumentContentType = "missing argument `cType`"
 	FailedToSetConfigPersist   = "failed to set config `persist`"
 	FailedToSetConfigPriority  = "fail to set config `prority queue`"
+
+	FailedToApplyConsumerConfigFunc = "unable to apply consumer config"
 )
