@@ -8,13 +8,18 @@ import (
 )
 
 type Consumer interface {
-	Use()
+	Use(handler ConsumerHandler)
 
-	// UseWithConfigs config consumer
+	// WithConfigs config consumer
 	// See https://godoc.org/github.com/streadway/amqp#Channel.Consume
-	UseWithConfigs(configs ...ConsumerConfigHandler)
+	WithConfigs(configs ...ConsumerConfigHandler)
 
-	UseDeadLetterQueue()
+	// WithDeadLetterQueue defines dead-letter-queue with friendly config
+	WithDeadLetterQueue()
+
+	Consume()
+
+	ConsumeWithRetry()
 }
 
 type ConsumerConfigHandler func(*Consume) error
@@ -27,6 +32,15 @@ type Consume struct {
 	noLocal      bool
 	noWait       bool
 	args         *amqp.Table
+
+	msg      chan *amqp.Delivery
+	handlers []ConsumerHandler
+}
+
+type ConsumerHandler interface {
+	Do(msg []byte) error
+
+	Fallback(err error)
 }
 
 // NewConsumer creates an instance the consumer object
@@ -39,11 +53,7 @@ func NewConsumer(qName, cName string, ch *amqp.Channel) Consumer {
 	}
 }
 
-func (c *Consume) Use() {
-
-}
-
-func (c *Consume) UseWithConfigs(configs ...ConsumerConfigHandler) {
+func (c *Consume) WithConfigs(configs ...ConsumerConfigHandler) {
 	for _, config := range configs {
 		err := config(c)
 		if err != nil {
@@ -52,6 +62,22 @@ func (c *Consume) UseWithConfigs(configs ...ConsumerConfigHandler) {
 	}
 }
 
-func (c *Consume) UseDeadLetterQueue() {
+func (c *Consume) WithDeadLetterQueue() {
+
+}
+
+func (c *Consume) Use(handler ConsumerHandler) {
+	if handler == nil {
+		log.Panic(FailedToAppledHandlerFunc)
+	}
+
+	c.handlers = append(c.handlers, handler)
+}
+
+func (c *Consume) Consume() {
+
+}
+
+func (c *Consume) ConsumeWithRetry() {
 
 }
