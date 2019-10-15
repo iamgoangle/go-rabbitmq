@@ -19,7 +19,7 @@ type Producer interface {
 type Produce struct {
 	exchange, key, kind  string
 	mandatory, immediate bool
-	ch                   *amqp.Channel
+	ch                   *Channel
 }
 
 // ProducerConfigHandler handles optinal parameter as a function
@@ -31,7 +31,7 @@ type ProducerConfigHandler func(*Produce) error
 type PublishConfigHandler func(*amqp.Publishing) error
 
 // NewProducer instance the new producer
-func NewProducer(exName, routingKey, kind string, ch *amqp.Channel) Producer {
+func NewProducer(exName, routingKey, kind string, ch *Channel) Producer {
 	return &Produce{
 		exchange: exName,
 		key:      routingKey,

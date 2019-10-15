@@ -25,7 +25,7 @@ type Consumer interface {
 type ConsumerConfigHandler func(*Consume) error
 
 type Consume struct {
-	ch *amqp.Channel
+	ch *Channel
 
 	queueName    string
 	consumerName string
@@ -48,7 +48,7 @@ type ConsumerHandler interface {
 // NewConsumer creates an instance the consumer object
 // qName specific queue name you want to consume
 // cName specific consumer name
-func NewConsumer(qName, cName string, ch *amqp.Channel) Consumer {
+func NewConsumer(qName, cName string, ch *Channel) Consumer {
 	return &Consume{
 		queueName:    qName,
 		consumerName: cName,

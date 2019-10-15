@@ -17,8 +17,8 @@ type Connection interface {
 	// CloseChannel closes the amqp channel
 	CloseChannel()
 
-	// Do handles channel amqp event
-	Do() *amqp.Channel
+	// Service implement channel amqp event
+	Services() *Channel
 
 	// Use applys use handler
 	// exchange to define amqp routing
@@ -35,6 +35,10 @@ type connection struct {
 	*amqp.Channel
 
 	middlewares []HandlerFunc
+}
+
+type Channel struct {
+	*amqp.Channel
 }
 
 // NewAMQPConnection creates amqp connection and channel
@@ -94,7 +98,7 @@ func (c *connection) CloseChannel() {
 	c.CloseChannel()
 }
 
-func (c *connection) Do() *amqp.Channel {
+func (c *connection) Services() *Channel {
 	for _, handler := range c.middlewares {
 		err := handler(c.Channel)
 		if err != nil {
@@ -102,5 +106,5 @@ func (c *connection) Do() *amqp.Channel {
 		}
 	}
 
-	return c.Channel
+	return &Channel{c.Channel}
 }
