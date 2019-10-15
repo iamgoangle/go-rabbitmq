@@ -14,4 +14,5 @@ const (
 	FailedToSetConfigPriority  = "fail to set config `prority queue`"
 
 	FailedToApplyConsumerConfigFunc = "unable to apply consumer config"
+	FailedToRegisterConsumer        = "failed to register consumer"
 )

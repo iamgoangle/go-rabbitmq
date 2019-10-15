@@ -17,7 +17,7 @@ type Consumer interface {
 	// WithDeadLetterQueue defines dead-letter-queue with friendly config
 	WithDeadLetterQueue()
 
-	Consume()
+	Consume() error
 
 	ConsumeWithRetry()
 }
@@ -25,13 +25,15 @@ type Consumer interface {
 type ConsumerConfigHandler func(*Consume) error
 
 type Consume struct {
+	ch *amqp.Channel
+
 	queueName    string
 	consumerName string
 	autoAck      bool
 	exclusive    bool
 	noLocal      bool
 	noWait       bool
-	args         *amqp.Table
+	args         amqp.Table
 
 	msg      chan *amqp.Delivery
 	handlers []ConsumerHandler
@@ -50,6 +52,7 @@ func NewConsumer(qName, cName string, ch *amqp.Channel) Consumer {
 	return &Consume{
 		queueName:    qName,
 		consumerName: cName,
+		ch:           ch,
 	}
 }
 
@@ -74,8 +77,36 @@ func (c *Consume) Use(handler ConsumerHandler) {
 	c.handlers = append(c.handlers, handler)
 }
 
-func (c *Consume) Consume() {
+func (c *Consume) Consume() error {
+	msgs, err := c.ch.Consume(
+		c.queueName,    // queue
+		c.consumerName, // consumer
+		c.autoAck,      // auto ack
+		c.exclusive,    // exclusive
+		c.noLocal,      // no local
+		c.noWait,       // no wait
+		c.args,         // args
+	)
 
+	if err != nil {
+		return errors.Wrap(err, FailedToRegisterConsumer)
+	}
+
+	go func() {
+		for m := range msgs {
+			for _, h := range c.handlers {
+				err := h.Do(m.Body)
+				if err != nil {
+					h.Fallback(err)
+					break
+				}
+			}
+		}
+	}()
+
+	c.ch.Close()
+
+	return nil
 }
 
 func (c *Consume) ConsumeWithRetry() {
