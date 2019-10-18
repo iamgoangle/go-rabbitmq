@@ -4,6 +4,7 @@ import (
 	"log"
 
 	rabbitmq "github.com/iamgoangle/go-advance-rabbitmq/internal/rabbitmq_function_friendly"
+	middlewares "github.com/iamgoangle/go-advance-rabbitmq/internal/rabbitmq_function_friendly/middlewares"
 )
 
 func main() {
@@ -12,11 +13,14 @@ func main() {
 		log.Panic(err)
 	}
 
-	connection.Use(rabbitmq.ExchangeDeclare("exchange_test", rabbitmq.ExchangeDirect, nil))
-	connection.Use(rabbitmq.QueueDeclare("test", nil))
-	connection.Use(rabbitmq.QueueBind("test", "", "exchange_test", false, nil))
+	connection.Use(middlewares.ExchangeDeclare("exchange_test", middlewares.ExchangeDirect, nil))
+	connection.Use(middlewares.QueueDeclare("test", nil))
+	connection.Use(middlewares.QueueBind("test", "", "exchange_test", false, nil))
+	if err := connection.Run(); err != nil {
+		log.Panic(err)
+	}
 
-	producer := rabbitmq.NewProducer("exchange_test", "", "", connection.Services())
+	producer := rabbitmq.NewProducer("exchange_test", "", "", connection)
 	err = producer.Publish([]byte(`{"Name":"Alice","Body":"Hello","Time":1294706395881547000}`), nil)
 	if err != nil {
 		log.Println("unable to publish body")

@@ -7,7 +7,11 @@ import (
 	"github.com/streadway/amqp"
 )
 
-type HandlerFunc func(ch *amqp.Channel) error
+// HandlerFunc is handler function type for inject a logic
+// for implment amqp method
+
+// type HandlerFunc func(ch *amqp.Channel) error
+type HandlerFunc func(c Connection) error
 
 // Connection represent interface amqp connection
 type Connection interface {
@@ -17,9 +21,6 @@ type Connection interface {
 	// CloseChannel closes the amqp channel
 	CloseChannel()
 
-	// Service implement channel amqp event
-	Services() *Channel
-
 	// Use applys use handler
 	// exchange to define amqp routing
 	// queue to define queue
@@ -28,6 +29,32 @@ type Connection interface {
 
 	// ApplyUse applies use as soon as possible
 	ApplyUse(handler ...HandlerFunc) error
+
+	Declare
+	Bind
+	Channel
+
+	Run() error
+}
+
+// Declare handler amqp channel declare
+type Declare interface {
+	ExchangeDeclare(name, kind string, durable, autoDelete, internal, noWait bool, args amqp.Table) error
+
+	QueueDeclare(name string, durable, autoDelete, internal, noWait bool, args amqp.Table) error
+}
+
+// Bind handle amqp channel binding
+type Bind interface {
+	// QueueBind binds an exchange to a queue so that publishings to the exchange will
+	// be routed to the queue when the publishing routing key matches the binding
+	// routing key.
+	QueueBind(name, key, exchange string, noWait bool, args amqp.Table) error
+}
+
+type Channel interface {
+	// Publish sends a Publishing from the client to an exchange on the server.
+	Publish(exchange, key string, mandatory, immediate bool, msg amqp.Publishing) error
 }
 
 type connection struct {
@@ -35,10 +62,6 @@ type connection struct {
 	*amqp.Channel
 
 	middlewares []HandlerFunc
-}
-
-type Channel struct {
-	*amqp.Channel
 }
 
 // NewAMQPConnection creates amqp connection and channel
@@ -81,13 +104,44 @@ func (c *connection) ApplyUse(handlers ...HandlerFunc) error {
 	}
 
 	for _, h := range handlers {
-		err := h(c.Channel)
+		err := h(c)
 		if err != nil {
 			return errors.Wrap(err, FailedToAppledHandlerFunc)
 		}
 	}
 
 	return nil
+}
+
+func (c *connection) ExchangeDeclare(name, kind string, durable, autoDelete, internal, noWait bool, args amqp.Table) error {
+	err := c.Channel.ExchangeDeclare(name, kind, durable, autoDelete, internal, noWait, args)
+	if err != nil {
+		return errors.Wrap(err, "unable to declare exchange")
+	}
+
+	return nil
+}
+
+func (c *connection) QueueDeclare(name string, durable, autoDelete, exclusive, noWait bool, args amqp.Table) error {
+	_, err := c.Channel.QueueDeclare(name, durable, autoDelete, exclusive, noWait, args)
+	if err != nil {
+		return errors.Wrap(err, "unable to declare queue")
+	}
+
+	return nil
+}
+
+func (c *connection) QueueBind(name, key, exchange string, noWait bool, args amqp.Table) error {
+	err := c.Channel.QueueBind(name, key, exchange, noWait, args)
+	if err != nil {
+		return errors.Wrap(err, "unable to binding queue")
+	}
+
+	return nil
+}
+
+func (c *connection) Publish(exchange, key string, mandatory, immediate bool, msg amqp.Publishing) error {
+	return c.Channel.Publish(exchange, key, mandatory, immediate, msg)
 }
 
 func (c *connection) Close() {
@@ -98,13 +152,13 @@ func (c *connection) CloseChannel() {
 	c.CloseChannel()
 }
 
-func (c *connection) Services() *Channel {
+func (c *connection) Run() error {
 	for _, handler := range c.middlewares {
-		err := handler(c.Channel)
+		err := handler(c)
 		if err != nil {
-			log.Panic(FailedToAppledHandlerFunc, err.Error())
+			errors.Wrap(err, FaiiledToRun)
 		}
 	}
 
-	return &Channel{c.Channel}
+	return nil
 }

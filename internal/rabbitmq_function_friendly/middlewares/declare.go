@@ -3,6 +3,8 @@ package rabbitmq
 import (
 	"github.com/pkg/errors"
 	"github.com/streadway/amqp"
+
+	rabbitmq "github.com/iamgoangle/go-advance-rabbitmq/internal/rabbitmq_function_friendly"
 )
 
 const (
@@ -13,14 +15,16 @@ const (
 )
 
 // ExchangeDeclare return exchange declare handler function option
-func ExchangeDeclare(name, kind string, args amqp.Table) HandlerFunc {
+func ExchangeDeclare(name, kind string, args amqp.Table) rabbitmq.HandlerFunc {
 	durable := false
 	autoDelete := false
 	internal := false
 	noWait := false
 
-	return func(ch *amqp.Channel) error {
-		err := ch.ExchangeDeclare(name, kind, durable, autoDelete, internal, noWait, args)
+	// inject your business logic here
+
+	return func(c rabbitmq.Connection) error {
+		err := c.ExchangeDeclare(name, kind, durable, autoDelete, internal, noWait, args)
 		if err != nil {
 			return errors.Wrap(err, "unable to declare exchange")
 		}
@@ -30,14 +34,16 @@ func ExchangeDeclare(name, kind string, args amqp.Table) HandlerFunc {
 }
 
 // QueueDeclare return queue declare handler function option
-func QueueDeclare(name string, args amqp.Table) HandlerFunc {
+func QueueDeclare(name string, args amqp.Table) rabbitmq.HandlerFunc {
 	durable := false
 	autoDelete := false
 	exclusive := false
 	noWait := false
 
-	return func(ch *amqp.Channel) error {
-		_, err := ch.QueueDeclare(name, durable, autoDelete, exclusive, noWait, args)
+	// inject your business logic here
+
+	return func(c rabbitmq.Connection) error {
+		err := c.QueueDeclare(name, durable, autoDelete, exclusive, noWait, args)
 		if err != nil {
 			return errors.Wrap(err, "unable to declare queue")
 		}

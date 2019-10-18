@@ -4,6 +4,7 @@ const (
 	FailedToCreateNewConnection = "unable to create new connection"
 	FailedToCreateNewChannel    = "unable to create channel"
 	FailedToAppledHandlerFunc   = "unable to apply handler func, please check your function"
+	FaiiledToRun                = "unable to execute middleware"
 
 	FailedToApplyProducerConfigFunc        = "unable to apply producer config"
 	FailedToApplyPublishPropertyConfigFunc = "unable to apply publish property config func"
