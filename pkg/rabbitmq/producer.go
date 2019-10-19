@@ -12,6 +12,7 @@ type Producer interface {
 	UseWithConfig(config ...ProducerConfigHandler) error
 
 	// Publish send the message to amqp broker
+	// default is []byte with mime type text/json
 	Publish(body []byte, config ...PublishConfigHandler) error
 }
 

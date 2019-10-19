@@ -35,7 +35,10 @@ type Connection interface {
 	// Bind binds the queue with exchange
 	Bind
 
-	// Channel channels implements wrapper ch *amqp.Channel
+	// Channel represents an AMQP channel.
+	// Used as a context for valid message exchange.
+	// Errors on methods with this Channel as a receiver means this channel
+	// should be discarded and a new channel established.
 	Channel
 
 	// Run apply middlewares
@@ -55,8 +58,11 @@ type Bind interface {
 }
 
 type Channel interface {
-	// Publish sends a Publishing from the client to an exchange on the server.
+	// Publish sends a Publishing from the client to an exchange on the server
 	Publish(exchange, key string, mandatory, immediate bool, msg amqp.Publishing) error
+
+	// Consume immediately starts delivering queued messages
+	Consume(queue, consumer string, autoAck, exclusive, noLocal, noWait bool, args amqp.Table) (<-chan amqp.Delivery, error)
 }
 
 type connection struct {
@@ -144,6 +150,10 @@ func (c *connection) QueueBind(name, key, exchange string, noWait bool, args amq
 
 func (c *connection) Publish(exchange, key string, mandatory, immediate bool, msg amqp.Publishing) error {
 	return c.Channel.Publish(exchange, key, mandatory, immediate, msg)
+}
+
+func (c *connection) Consume(queue, consumer string, autoAck, exclusive, noLocal, noWait bool, args amqp.Table) (<-chan amqp.Delivery, error) {
+	return c.Channel.Consume(queue, consumer, autoAck, exclusive, noLocal, noWait, args)
 }
 
 func (c *connection) Close() {

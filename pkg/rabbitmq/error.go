@@ -16,4 +16,6 @@ const (
 
 	FailedToApplyConsumerConfigFunc = "unable to apply consumer config"
 	FailedToRegisterConsumer        = "failed to register consumer"
+
+	TTLShouldBeGTZero = "ttl must be greater than zero"
 )

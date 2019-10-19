@@ -7,25 +7,42 @@ import (
 	"github.com/streadway/amqp"
 )
 
-type Consumer interface {
-	Use(handler ConsumerHandler)
+// ConsumerHandler defines the set of method for any consumer client
+// provides Do() for client business logic
+// and OnError() for handle in case of consume error
+type ConsumerHandler interface {
+	Do(msg []byte) error
 
+	OnSuccess(m amqp.Delivery) error
+
+	OnError(m amqp.Delivery, err error)
+}
+
+// Consumer interface
+type Consumer interface {
 	// WithConfigs config consumer
 	// See https://godoc.org/github.com/streadway/amqp#Channel.Consume
 	WithConfigs(configs ...ConsumerConfigHandler)
 
 	// WithDeadLetterQueue defines dead-letter-queue with friendly config
-	WithDeadLetterQueue()
+	WithDeadLetterQueue(configs ...ConsumerConfigDLQHandler)
+
+	// Use apply consumer handlers
+	Use(handler ConsumerHandler)
 
 	Consume() error
 
 	ConsumeWithRetry()
 }
 
+// ConsumerConfigHandler is config function contain a implement method amqp.Channel
 type ConsumerConfigHandler func(*Consume) error
 
+type ConsumerConfigDLQHandler func(*ConsumerDLQ) error
+
+// Consume type
 type Consume struct {
-	ch *Channel
+	conn Connection
 
 	queueName    string
 	consumerName string
@@ -35,24 +52,25 @@ type Consume struct {
 	noWait       bool
 	args         amqp.Table
 
-	msg      chan *amqp.Delivery
+	msg chan *amqp.Delivery
+
 	handlers []ConsumerHandler
+
+	requiredRetry bool
+	*ConsumerDLQ
 }
 
-type ConsumerHandler interface {
-	Do(msg []byte) error
-
-	Fallback(err error)
+type ConsumerDLQ struct {
 }
 
 // NewConsumer creates an instance the consumer object
 // qName specific queue name you want to consume
 // cName specific consumer name
-func NewConsumer(qName, cName string, ch *Channel) Consumer {
+func NewConsumer(qName, cName string, conn Connection) Consumer {
 	return &Consume{
 		queueName:    qName,
 		consumerName: cName,
-		ch:           ch,
+		conn:         conn,
 	}
 }
 
@@ -65,7 +83,7 @@ func (c *Consume) WithConfigs(configs ...ConsumerConfigHandler) {
 	}
 }
 
-func (c *Consume) WithDeadLetterQueue() {
+func (c *Consume) WithDeadLetterQueue(configs ...ConsumerConfigDLQHandler) {
 
 }
 
@@ -78,7 +96,10 @@ func (c *Consume) Use(handler ConsumerHandler) {
 }
 
 func (c *Consume) Consume() error {
-	msgs, err := c.ch.Consume(
+	defer c.conn.CloseChannel()
+	defer c.conn.Close()
+
+	msgs, err := c.conn.Consume(
 		c.queueName,    // queue
 		c.consumerName, // consumer
 		c.autoAck,      // auto ack
@@ -97,14 +118,18 @@ func (c *Consume) Consume() error {
 			for _, h := range c.handlers {
 				err := h.Do(m.Body)
 				if err != nil {
-					h.Fallback(err)
+					h.OnError(m, err)
+					break
+				}
+
+				if err := h.OnSuccess(m); err != nil {
 					break
 				}
 			}
+
+			m.Ack(false)
 		}
 	}()
-
-	c.ch.Close()
 
 	return nil
 }
