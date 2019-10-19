@@ -147,11 +147,15 @@ func (c *connection) Publish(exchange, key string, mandatory, immediate bool, ms
 }
 
 func (c *connection) Close() {
-	c.Close()
+	if err := c.Connection.Close(); err != nil {
+		log.Panic("unable to close connection")
+	}
 }
 
 func (c *connection) CloseChannel() {
-	c.CloseChannel()
+	if err := c.Channel.Close(); err != nil {
+		log.Panic("unable to close channel")
+	}
 }
 
 func (c *connection) Run() error {
