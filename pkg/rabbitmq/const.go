@@ -17,5 +17,11 @@ const (
 	FailedToApplyConsumerConfigFunc = "unable to apply consumer config"
 	FailedToRegisterConsumer        = "failed to register consumer"
 
-	TTLShouldBeGTZero = "ttl must be greater than zero"
+	TTLShouldBeGTZero               = "ttl must be greater than zero"
+	FailedToExecuteConsumerHandlers = "failed to execute consumer handlers"
+	FailedToConsumeItem             = "failed to consume message"
+)
+
+const (
+	ConsumerRegistered = "registered new consumer"
 )

@@ -98,6 +98,9 @@ func (c *Consume) Use(handler ConsumerHandler) {
 }
 
 func (c *Consume) Consume() error {
+	done := make(chan error)
+
+	defer close(done)
 	defer c.conn.CloseChannel()
 	defer c.conn.Close()
 
@@ -116,7 +119,13 @@ func (c *Consume) Consume() error {
 	}
 
 	go func() {
+		log.Printf("%s - %s\n", c.consumerName, ConsumerRegistered)
+
 		for m := range msgs {
+			if len(c.handlers) == 0 {
+				log.Panic(FailedToExecuteConsumerHandlers)
+			}
+
 			for _, h := range c.handlers {
 				err := h.Do(m.Body)
 				if err != nil {
@@ -133,7 +142,9 @@ func (c *Consume) Consume() error {
 		}
 	}()
 
-	return nil
+	done <- nil
+
+	return errors.New(FailedToConsumeItem)
 }
 
 func (c *Consume) ConsumeWithRetry() {

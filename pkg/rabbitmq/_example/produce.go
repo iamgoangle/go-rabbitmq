@@ -21,7 +21,7 @@ func main() {
 	}
 
 	producer := rabbitmq.NewProducer("exchange_test", "", "", connection)
-	err = producer.Publish([]byte(`{"Name":"Alice","Body":"Hello","Time":1294706395881547000}`), nil)
+	err = producer.Publish([]byte(`{"Name":"Alice","Body":"Hello","Time":1294706395881547000}`))
 	if err != nil {
 		log.Println("unable to publish body")
 	}
