@@ -4,7 +4,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/streadway/amqp"
 
-	rabbitmq "github.com/iamgoangle/go-advance-rabbitmq/internal/rabbitmq_function_friendly"
+	rabbitmq "github.com/iamgoangle/go-advance-rabbitmq/pkg/rabbitmq"
 )
 
 // QueueBind binding queue with exchange

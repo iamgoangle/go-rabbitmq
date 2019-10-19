@@ -1,5 +1,7 @@
 package rabbitmq
 
+//go:generate mockgen -source=./connection.go -destination=./mocks/connection_mock.go -package=mocks github.com/iamgoangle/go-advance-rabbitmq/pkg/rabbitmq Connection
+
 import (
 	"log"
 
