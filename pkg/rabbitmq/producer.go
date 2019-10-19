@@ -1,5 +1,7 @@
 package rabbitmq
 
+//go:generate mockgen -source=./producer.go -destination=./mocks/producer_mock.go -package=mocks github.com/iamgoangle/go-advance-rabbitmq/pkg/rabbitmq Producer
+
 import (
 	"github.com/pkg/errors"
 
