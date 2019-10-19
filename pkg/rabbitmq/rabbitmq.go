@@ -9,44 +9,44 @@ import (
 	"github.com/streadway/amqp"
 )
 
-// HandlerFunc is handler function type for inject a logic
-// for implment amqp method
-
-// type HandlerFunc func(ch *amqp.Channel) error
+// HandlerFunc is a handler function for decorate exchange and queue
+// that allows the client can be modify thier content as a closure
+// and return middlewares function
 type HandlerFunc func(c Connection) error
 
-// Connection represent interface amqp connection
+// Connection represent interface RabbitMQ method
 type Connection interface {
+	// Use push middleware function apply to connection
+	// middleware can be config function
+	Use(handler HandlerFunc) error
+
 	// Close entire amqp connection
 	Close()
 
 	// CloseChannel closes the amqp channel
 	CloseChannel()
 
-	// Use applys use handler
-	// exchange to define amqp routing
-	// queue to define queue
-	// Use(handlers ...HandlerFunc) error
-	Use(handler HandlerFunc) error
-
 	// ApplyUse applies use as soon as possible
 	ApplyUse(handler ...HandlerFunc) error
 
+	// Declare declares an exchange or queue
 	Declare
+
+	// Bind binds the queue with exchange
 	Bind
+
+	// Channel channels implements wrapper ch *amqp.Channel
 	Channel
 
+	// Run apply middlewares
 	Run() error
 }
 
-// Declare handler amqp channel declare
 type Declare interface {
 	ExchangeDeclare(name, kind string, durable, autoDelete, internal, noWait bool, args amqp.Table) error
-
 	QueueDeclare(name string, durable, autoDelete, internal, noWait bool, args amqp.Table) error
 }
 
-// Bind handle amqp channel binding
 type Bind interface {
 	// QueueBind binds an exchange to a queue so that publishings to the exchange will
 	// be routed to the queue when the publishing routing key matches the binding
