@@ -10,7 +10,7 @@ Implementation is probably straight-forward of the project that aim to follow ch
 
 - [x] Functional options for producer publishing the message.
 
-- [ ] Consumer re-establish connection once recieves closed notifty signal from broker as soon as possible.
+- [ ] Connection re-establish once recieves closed notifty signal from broker as soon as possible.
 
 - [ ] Consumer retry queue middleware.
 
