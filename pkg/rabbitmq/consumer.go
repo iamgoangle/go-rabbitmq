@@ -62,6 +62,7 @@ type Consume struct {
 	handlers []ConsumerHandler
 
 	requiredRetry bool
+
 	*ConsumerDLQ
 }
 
@@ -89,7 +90,7 @@ func (c *Consume) WithConfigs(configs ...ConsumerConfigHandler) {
 }
 
 func (c *Consume) WithDeadLetterQueue(configs ...ConsumerConfigDLQHandler) {
-
+	c.requiredRetry = true
 }
 
 func (c *Consume) Use(handler ConsumerHandler) {

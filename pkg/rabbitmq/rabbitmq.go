@@ -9,10 +9,14 @@ import (
 	"github.com/streadway/amqp"
 )
 
-// HandlerFunc is a handler function for decorate exchange and queue
-// that allows the client can be modify thier content as a closure
-// and return middlewares function
-type HandlerFunc func(c Connection) error
+// Config is RabbitMQ connection
+type Config struct {
+	Host     string
+	Port     int
+	Username string
+	Password string
+	Vhost    string
+}
 
 // Connection represent interface RabbitMQ method
 type Connection interface {
@@ -65,6 +69,11 @@ type Channel interface {
 	Consume(queue, consumer string, autoAck, exclusive, noLocal, noWait bool, args amqp.Table) (<-chan amqp.Delivery, error)
 }
 
+// HandlerFunc is a handler function for decorate exchange and queue
+// that allows the client can be modify thier content as a closure
+// and return middlewares function
+type HandlerFunc func(c Connection) error
+
 type connection struct {
 	*amqp.Connection
 	*amqp.Channel
@@ -73,12 +82,21 @@ type connection struct {
 }
 
 // NewAMQPConnection creates amqp connection and channel
-func NewAMQPConnection(host string) (Connection, error) {
-	if len(host) == 0 {
+func NewAMQPConnection(c Config) (Connection, error) {
+	if c.Host == "" {
 		return nil, errors.New("fail to create channel due to missing host specified")
 	}
 
-	conn, err := amqp.Dial(host)
+	conf := amqp.URI{
+		Scheme:   "amqp",
+		Host:     c.Host,
+		Port:     c.Port,
+		Username: c.Username,
+		Password: c.Password,
+		Vhost:    c.Vhost,
+	}.String()
+
+	conn, err := amqp.Dial(conf)
 	if err != nil {
 		return nil, errors.Wrap(err, FailedToCreateNewConnection)
 	}
@@ -88,7 +106,7 @@ func NewAMQPConnection(host string) (Connection, error) {
 		return nil, errors.Wrap(err, FailedToCreateNewChannel)
 	}
 
-	log.Println("created new amqp connection and channel")
+	log.Printf("created new amqp connection and channel %v", conf)
 
 	return &connection{
 		Connection: conn,

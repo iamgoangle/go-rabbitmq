@@ -8,7 +8,14 @@ import (
 )
 
 func main() {
-	connection, err := rabbitmq.NewAMQPConnection("amqp://admin:1234@localhost:5672/")
+	conf := rabbitmq.Config{
+		Host:     "localhost",
+		Port:     5672,
+		Username: "admin",
+		Password: "1234",
+		Vhost:    "/",
+	}
+	connection, err := rabbitmq.NewAMQPConnection(conf)
 	if err != nil {
 		log.Panic(err)
 	}
