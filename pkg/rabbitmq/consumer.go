@@ -4,6 +4,9 @@ package rabbitmq
 
 import (
 	"log"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/pkg/errors"
 	"github.com/streadway/amqp"
@@ -98,11 +101,11 @@ func (c *Consume) Use(handler ConsumerHandler) {
 }
 
 func (c *Consume) Consume() error {
-	done := make(chan error)
+	done := make(chan bool, 1)
+	sigs := make(chan os.Signal, 1)
 
 	defer close(done)
-	defer c.conn.CloseChannel()
-	defer c.conn.Close()
+	defer close(sigs)
 
 	msgs, err := c.conn.Consume(
 		c.queueName,    // queue
@@ -142,9 +145,23 @@ func (c *Consume) Consume() error {
 		}
 	}()
 
-	done <- nil
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 
-	return errors.New(FailedToConsumeItem)
+	go func() {
+		sig := <-sigs
+		log.Printf("%v - recieved signals", sig)
+
+		c.conn.CloseChannel()
+		c.conn.Close()
+
+		done <- true
+	}()
+
+	<-done
+
+	log.Println("Closed rabbitmq consumer")
+
+	return nil
 }
 
 func (c *Consume) ConsumeWithRetry() {

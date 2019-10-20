@@ -160,12 +160,16 @@ func (c *connection) Close() {
 	if err := c.Connection.Close(); err != nil {
 		log.Panic("unable to close connection")
 	}
+
+	log.Println("Closed AMQP Channel")
 }
 
 func (c *connection) CloseChannel() {
 	if err := c.Channel.Close(); err != nil {
 		log.Panic("unable to close channel")
 	}
+
+	log.Println("Closed AMQP Connection")
 }
 
 func (c *connection) Run() error {

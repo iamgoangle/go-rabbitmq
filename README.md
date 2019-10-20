@@ -15,3 +15,7 @@ Implementation is probably straight-forward of the project that aim to follow ch
 - [ ] Consumer retry queue middleware.
 
 - [ ] Consumer retry queue middleware with backoff config.
+
+- [x] Closed Connection and Channel gracefully by signal notify
+
+### Usages
