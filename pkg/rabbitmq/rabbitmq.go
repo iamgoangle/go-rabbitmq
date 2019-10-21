@@ -4,9 +4,15 @@ package rabbitmq
 
 import (
 	"log"
+	"sync/atomic"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/streadway/amqp"
+)
+
+const (
+	delay = 1
 )
 
 // Config is RabbitMQ connection
@@ -76,9 +82,14 @@ type HandlerFunc func(c Connection) error
 
 type connection struct {
 	*amqp.Connection
-	*amqp.Channel
+	Channel *channel
 
 	middlewares []HandlerFunc
+}
+
+type channel struct {
+	*amqp.Channel
+	closed int32
 }
 
 // NewAMQPConnection creates amqp connection and channel
@@ -101,9 +112,46 @@ func NewAMQPConnection(c Config) (Connection, error) {
 		return nil, errors.Wrap(err, FailedToCreateNewConnection)
 	}
 
-	ch, err := conn.Channel()
+	reconnectable := &connection{
+		Connection: conn,
+	}
+
+	go func() {
+		rabbitError := make(chan *amqp.Error)
+
+		for {
+			reason, ok := <-reconnectable.Connection.NotifyClose(rabbitError)
+			// exit this goroutine if closed by developer
+			if !ok {
+				log.Println("connection closed")
+				break
+			}
+			log.Printf("connection closed, reason: %v \n", reason)
+
+			// reconnect if not closed by developer
+			for {
+				// wait 1s for reconnect
+				time.Sleep(delay * time.Second)
+
+				conn, err := amqp.Dial(conf)
+				if err == nil {
+					reconnectable.Connection = conn
+					log.Println("reconnect success")
+					break
+				}
+
+				log.Printf("reconnect failed, err: %v \n", err)
+			}
+		}
+	}()
+
+	ch, err := reconnectable.channel()
 	if err != nil {
 		return nil, errors.Wrap(err, FailedToCreateNewChannel)
+	}
+
+	reconnectable = &connection{
+		Channel: ch,
 	}
 
 	log.Printf("created new amqp connection and channel %v", conf)
@@ -112,6 +160,64 @@ func NewAMQPConnection(c Config) (Connection, error) {
 		Connection: conn,
 		Channel:    ch,
 	}, nil
+}
+
+func (c *connection) channel() (*channel, error) {
+	ch, err := c.Connection.Channel()
+	if err != nil {
+		return nil, err
+	}
+
+	channel := &channel{
+		Channel: ch,
+	}
+
+	go func() {
+		for {
+			reason, ok := <-channel.Channel.NotifyClose(make(chan *amqp.Error))
+			// exit this goroutine if closed by developer
+			if !ok || channel.IsClosed() {
+				log.Println("channel closed")
+				channel.Close() // close again, ensure closed flag set when connection closed
+				break
+			}
+			log.Printf("channel closed, reason: %v \n", reason)
+
+			// reconnect if not closed by developer
+			for {
+				// wait 1s for connection reconnect
+				time.Sleep(delay * time.Second)
+
+				ch, err := c.Connection.Channel()
+				if err == nil {
+					log.Println("channel recreate success")
+					channel.Channel = ch
+					break
+				}
+
+				log.Printf("channel recreate failed, err: %v \n", err)
+			}
+		}
+
+	}()
+
+	return channel, nil
+}
+
+// IsClosed indicate closed by developer
+func (ch *channel) IsClosed() bool {
+	return (atomic.LoadInt32(&ch.closed) == 1)
+}
+
+// Close ensure closed flag set
+func (ch *channel) Close() error {
+	if ch.IsClosed() {
+		return amqp.ErrClosed
+	}
+
+	atomic.StoreInt32(&ch.closed, 1)
+
+	return ch.Channel.Close()
 }
 
 func (c *connection) Use(handler HandlerFunc) error {
