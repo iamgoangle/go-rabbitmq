@@ -3,8 +3,8 @@ package main
 import (
 	"log"
 
-	rabbitmq "github.com/iamgoangle/go-advance-rabbitmq/pkg/rabbitmq"
-	middlewares "github.com/iamgoangle/go-advance-rabbitmq/pkg/rabbitmq/middlewares"
+	rabbitmq "github.com/iamgoangle/go-rabbitmq/pkg/rabbitmq"
+	middlewares "github.com/iamgoangle/go-rabbitmq/pkg/rabbitmq/middlewares"
 )
 
 func main() {

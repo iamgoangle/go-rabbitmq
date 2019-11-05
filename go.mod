@@ -1,4 +1,4 @@
-module github.com/iamgoangle/go-advance-rabbitmq
+module github.com/iamgoangle/go-rabbitmq
 
 go 1.13
 
