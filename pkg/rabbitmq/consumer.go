@@ -151,8 +151,6 @@ func (c *Consume) Consume() error {
 	go func() {
 		sig := <-sigs
 		log.Printf("%v - recieved signals", sig)
-
-		c.conn.CloseChannel()
 		c.conn.Close()
 
 		done <- true

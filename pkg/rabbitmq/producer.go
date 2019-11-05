@@ -15,7 +15,7 @@ type Producer interface {
 
 	// Publish send the message to amqp broker
 	// default is []byte with mime type text/json
-	Publish(body []byte, config ...PublishConfigHandler) error
+	Publish(body []byte) error
 }
 
 // Produce represents produce object
@@ -25,7 +25,7 @@ type Produce struct {
 	conn                 Connection
 }
 
-// ProducerConfigHandler handles optinal parameter as a function
+// ProducerConfigHandler handles options parameter as a function
 // See https://godoc.org/github.com/streadway/amqp#Channel.Publish
 type ProducerConfigHandler func(*Produce) error
 
@@ -54,18 +54,18 @@ func (p *Produce) UseWithConfig(configs ...ProducerConfigHandler) error {
 	return nil
 }
 
-func (p *Produce) Publish(body []byte, configs ...PublishConfigHandler) error {
+func (p *Produce) Publish(body []byte) error {
 	msg := amqp.Publishing{
 		ContentType: "text/json",
 		Body:        body,
 	}
 
-	for _, config := range configs {
-		err := config(&msg)
-		if err != nil {
-			return errors.Wrap(err, FailedToApplyPublishPropertyConfigFunc)
-		}
-	}
+	// for _, config := range configs {
+	// 	err := config(&msg)
+	// 	if err != nil {
+	// 		return errors.Wrap(err, FailedToApplyPublishPropertyConfigFunc)
+	// 	}
+	// }
 
 	return p.conn.Publish(p.exchange, p.key, p.mandatory, p.immediate, msg)
 }

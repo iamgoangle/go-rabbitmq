@@ -6,8 +6,8 @@ import (
 
 	"github.com/streadway/amqp"
 
-	rabbitmq "github.com/iamgoangle/go-advance-rabbitmq/pkg/rabbitmq"
-	middlewares "github.com/iamgoangle/go-advance-rabbitmq/pkg/rabbitmq/middlewares"
+	rabbitmq "github.com/iamgoangle/go-rabbitmq/pkg/rabbitmq"
+	middlewares "github.com/iamgoangle/go-rabbitmq/pkg/rabbitmq/middlewares"
 )
 
 type handler struct {

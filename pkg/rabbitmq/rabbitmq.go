@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	delay = 1
+	delay = 3
 )
 
 // Config is RabbitMQ connection
@@ -32,9 +32,6 @@ type Connection interface {
 
 	// Close entire amqp connection
 	Close()
-
-	// CloseChannel closes the amqp channel
-	CloseChannel()
 
 	// ApplyUse applies use as soon as possible
 	ApplyUse(handler ...HandlerFunc) error
@@ -57,6 +54,7 @@ type Connection interface {
 
 type Declare interface {
 	ExchangeDeclare(name, kind string, durable, autoDelete, internal, noWait bool, args amqp.Table) error
+
 	QueueDeclare(name string, durable, autoDelete, internal, noWait bool, args amqp.Table) error
 }
 
@@ -76,13 +74,13 @@ type Channel interface {
 }
 
 // HandlerFunc is a handler function for decorate exchange and queue
-// that allows the client can be modify thier content as a closure
+// that allows the client can be modify their content as a closure
 // and return middlewares function
 type HandlerFunc func(c Connection) error
 
 type connection struct {
 	*amqp.Connection
-	Channel *channel
+	session *channel
 
 	middlewares []HandlerFunc
 }
@@ -90,6 +88,15 @@ type connection struct {
 type channel struct {
 	*amqp.Channel
 	closed int32
+}
+
+func dial(uri string) (*amqp.Connection, error) {
+	conn, err := amqp.Dial(uri)
+	if err != nil {
+		return nil, err
+	}
+
+	return conn, nil
 }
 
 // NewAMQPConnection creates amqp connection and channel
@@ -107,35 +114,31 @@ func NewAMQPConnection(c Config) (Connection, error) {
 		Vhost:    c.Vhost,
 	}.String()
 
-	conn, err := amqp.Dial(conf)
+	conn, err := dial(conf)
 	if err != nil {
 		return nil, errors.Wrap(err, FailedToCreateNewConnection)
 	}
 
-	reconnectable := &connection{
+	recon := &connection{
 		Connection: conn,
 	}
 
+	// re-connecting routine
 	go func() {
-		rabbitError := make(chan *amqp.Error)
-
 		for {
-			reason, ok := <-reconnectable.Connection.NotifyClose(rabbitError)
-			// exit this goroutine if closed by developer
+			reason, ok := <-recon.Connection.NotifyClose(make(chan *amqp.Error))
 			if !ok {
 				log.Println("connection closed")
 				break
 			}
 			log.Printf("connection closed, reason: %v \n", reason)
 
-			// reconnect if not closed by developer
 			for {
-				// wait 1s for reconnect
 				time.Sleep(delay * time.Second)
 
-				conn, err := amqp.Dial(conf)
+				conn, err := dial(conf)
 				if err == nil {
-					reconnectable.Connection = conn
+					recon.Connection = conn
 					log.Println("reconnect success")
 					break
 				}
@@ -145,20 +148,16 @@ func NewAMQPConnection(c Config) (Connection, error) {
 		}
 	}()
 
-	ch, err := reconnectable.channel()
+	ch, err := recon.channel()
 	if err != nil {
 		return nil, errors.Wrap(err, FailedToCreateNewChannel)
-	}
-
-	reconnectable = &connection{
-		Channel: ch,
 	}
 
 	log.Printf("created new amqp connection and channel %v", conf)
 
 	return &connection{
 		Connection: conn,
-		Channel:    ch,
+		session:    ch,
 	}, nil
 }
 
@@ -172,18 +171,17 @@ func (c *connection) channel() (*channel, error) {
 		Channel: ch,
 	}
 
+	// re-connecting routine
 	go func() {
 		for {
 			reason, ok := <-channel.Channel.NotifyClose(make(chan *amqp.Error))
-			// exit this goroutine if closed by developer
-			if !ok || channel.IsClosed() {
+			if !ok || channel.isClosed() {
 				log.Println("channel closed")
 				channel.Close() // close again, ensure closed flag set when connection closed
 				break
 			}
 			log.Printf("channel closed, reason: %v \n", reason)
 
-			// reconnect if not closed by developer
 			for {
 				// wait 1s for connection reconnect
 				time.Sleep(delay * time.Second)
@@ -204,14 +202,14 @@ func (c *connection) channel() (*channel, error) {
 	return channel, nil
 }
 
-// IsClosed indicate closed by developer
-func (ch *channel) IsClosed() bool {
-	return (atomic.LoadInt32(&ch.closed) == 1)
+// isClosed indicate closed by developer
+func (ch *channel) isClosed() bool {
+	return atomic.LoadInt32(&ch.closed) == 1
 }
 
 // Close ensure closed flag set
 func (ch *channel) Close() error {
-	if ch.IsClosed() {
+	if ch.isClosed() {
 		return amqp.ErrClosed
 	}
 
@@ -246,7 +244,7 @@ func (c *connection) ApplyUse(handlers ...HandlerFunc) error {
 }
 
 func (c *connection) ExchangeDeclare(name, kind string, durable, autoDelete, internal, noWait bool, args amqp.Table) error {
-	err := c.Channel.ExchangeDeclare(name, kind, durable, autoDelete, internal, noWait, args)
+	err := c.session.ExchangeDeclare(name, kind, durable, autoDelete, internal, noWait, args)
 	if err != nil {
 		return errors.Wrap(err, "unable to declare exchange")
 	}
@@ -255,7 +253,7 @@ func (c *connection) ExchangeDeclare(name, kind string, durable, autoDelete, int
 }
 
 func (c *connection) QueueDeclare(name string, durable, autoDelete, exclusive, noWait bool, args amqp.Table) error {
-	_, err := c.Channel.QueueDeclare(name, durable, autoDelete, exclusive, noWait, args)
+	_, err := c.session.QueueDeclare(name, durable, autoDelete, exclusive, noWait, args)
 	if err != nil {
 		return errors.Wrap(err, "unable to declare queue")
 	}
@@ -264,7 +262,7 @@ func (c *connection) QueueDeclare(name string, durable, autoDelete, exclusive, n
 }
 
 func (c *connection) QueueBind(name, key, exchange string, noWait bool, args amqp.Table) error {
-	err := c.Channel.QueueBind(name, key, exchange, noWait, args)
+	err := c.session.QueueBind(name, key, exchange, noWait, args)
 	if err != nil {
 		return errors.Wrap(err, "unable to binding queue")
 	}
@@ -273,34 +271,48 @@ func (c *connection) QueueBind(name, key, exchange string, noWait bool, args amq
 }
 
 func (c *connection) Publish(exchange, key string, mandatory, immediate bool, msg amqp.Publishing) error {
-	return c.Channel.Publish(exchange, key, mandatory, immediate, msg)
+	return c.session.Publish(exchange, key, mandatory, immediate, msg)
 }
 
 func (c *connection) Consume(queue, consumer string, autoAck, exclusive, noLocal, noWait bool, args amqp.Table) (<-chan amqp.Delivery, error) {
-	return c.Channel.Consume(queue, consumer, autoAck, exclusive, noLocal, noWait, args)
+	deliveries := make(chan amqp.Delivery)
+
+	go func() {
+		for {
+			msg, err := c.session.Consume(queue, consumer, autoAck, exclusive, noLocal, noWait, args)
+			if err != nil {
+				log.Printf("consume failed %v", err)
+				time.Sleep(delay * time.Second)
+				
+				continue
+			}
+
+			for m := range msg {
+				deliveries <- m
+			}
+
+			if c.session.isClosed() {
+				break
+			}
+		}
+	}()
+
+	return deliveries, nil
 }
 
 func (c *connection) Close() {
-	if err := c.Connection.Close(); err != nil {
+	if err := c.session.Close(); err != nil {
 		log.Panic("unable to close connection")
 	}
 
 	log.Println("Closed AMQP Channel")
 }
 
-func (c *connection) CloseChannel() {
-	if err := c.Channel.Close(); err != nil {
-		log.Panic("unable to close channel")
-	}
-
-	log.Println("Closed AMQP Connection")
-}
-
 func (c *connection) Run() error {
 	for _, handler := range c.middlewares {
 		err := handler(c)
 		if err != nil {
-			errors.Wrap(err, FaiiledToRun)
+			return errors.Wrap(err, FaiiledToRun)
 		}
 	}
 
